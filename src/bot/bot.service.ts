@@ -20,7 +20,9 @@ export class BotService {
       const userName = ctx.from.first_name || 'пользователь';
       await ctx.reply(
         `Привет, ${userName}! Выбери тест:`,
-        Markup.keyboard([['Тест 1', 'Тест 2']]) // Кнопки для выбора теста
+        Markup.keyboard([
+          ['На сколько вы осведомлены о МТД', 'Тест на ДМТД'],
+        ]) // Кнопки для выбора теста
           .oneTime()
           .resize(),
       );
@@ -31,12 +33,19 @@ export class BotService {
       const userText = ctx.message.text.toLowerCase();
 
       // Если пользователь выбирает тест
-      if (['тест 1', 'тест 2'].includes(userText)) {
+      if (
+        ['На сколько вы осведомлены о МТД', 'Тест на ДМТД'].includes(
+          userText,
+        )
+      ) {
         if (!this.userSessions[userId]) {
           this.userSessions[userId] = {
             currentQuestion: 0,
             answers: {},
-            testType: userText === 'тест 1' ? 'test1' : 'test2', // Сохраняем тип теста
+            testType:
+              userText === 'На сколько вы знаете осведомлены о МТД'
+                ? 'На сколько вы знаете осведомлены о МТД'
+                : 'Тест на ДМТД', // Сохраняем тип теста
           };
           return this.sendQuestion(ctx);
         }
@@ -46,7 +55,9 @@ export class BotService {
       if (this.userSessions[userId]) {
         const session = this.userSessions[userId];
         const currentTest =
-          session.testType === 'test1' ? questions : questionsTest2;
+          session.testType === 'На сколько вы осведомлены о МТД'
+            ? questions
+            : questionsTest2;
         const currentQuestion = currentTest[session.currentQuestion];
 
         // Сохраняем ответ
@@ -55,16 +66,21 @@ export class BotService {
 
         // Если тест завершен
         if (session.currentQuestion >= currentTest.length) {
-          if (session.testType === 'test2') {
-            // Подсчет ответов "Да" для второго теста
+          if (session.testType === 'Тест на ДМТД') {
             const yesCount = Object.values(session.answers).filter(
               (answer) => (answer as string).toLowerCase() === 'да',
             ).length;
             await this.sendTest2Result(ctx, yesCount); // Отправляем результат
           } else {
+            // Сообщение после первого теста
             await ctx.reply(
-              'Спасибо за участие в опросе!',
-              Markup.removeKeyboard(),
+              'Если хотя бы один вопрос заставил вас задуматься, уверена: вам будет интересно у меня в тг-канале:',
+              Markup.inlineKeyboard([
+                Markup.button.url(
+                  'Перейти в канал',
+                  'https://t.me/softPower_yoga',
+                ),
+              ]),
             );
           }
           delete this.userSessions[userId];
@@ -91,7 +107,9 @@ export class BotService {
     if (!session) return;
 
     const currentTest =
-      session.testType === 'test1' ? questions : questionsTest2;
+      session.testType === 'На сколько вы осведомлены о МТД'
+        ? questions
+        : questionsTest2;
 
     const question = currentTest[session.currentQuestion];
     const keyboard = Markup.keyboard(question.options).oneTime().resize();
@@ -116,6 +134,15 @@ export class BotService {
         '🔹 13+ «Да» – Вероятны серьёзные нарушения, требующие внимания врача и комплексного подхода.';
     }
 
+    // Отправляем результат теста
     await ctx.reply(resultMessage, Markup.removeKeyboard());
+
+    // Добавляем сообщение с предложением купить гайд
+    await ctx.reply(
+      'Если вы хотите узнать больше о профилактике дисфункции мышц тазового дна, рекомендуем приобрести наш гайд:',
+      Markup.inlineKeyboard([
+        Markup.button.url('Купить гайд', 'https://t.me/k_nazarovaaa'), // Замените ссылку на реальную
+      ]),
+    );
   }
 }
