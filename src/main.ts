@@ -5,4 +5,8 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   await app.listen(process.env.PORT ?? 3000);
 }
-bootstrap();
+
+bootstrap().catch((error) => {
+  console.error('Ошибка при запуске приложения:', error);
+  process.exit(1); // Завершаем процесс с кодом ошибки
+});
