@@ -43,7 +43,7 @@ export class BotService {
                 ? 'На сколько вы знаете осведомлены о МТД'
                 : 'Тест на ДМТД', // Сохраняем тип теста
           };
-          return this.sendQuestion(ctx);
+          return await this.sendQuestion(ctx);
         }
       }
 
