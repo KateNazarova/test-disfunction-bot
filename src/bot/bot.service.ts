@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Telegraf, Markup, Context } from 'telegraf';
+import { Update } from 'telegraf/typings/core/types/typegram';
 import { ConfigService } from '@nestjs/config';
 import { questions } from './questions';
 import { questionsTest2 } from './question2';
@@ -8,6 +9,11 @@ interface UserSession {
   currentQuestion: number;
   answers: Record<string, string>;
   testType: 'На сколько вы осведомлены о МТД' | 'Тест на ДМТД';
+}
+
+// Кастомный тип для контекста с поддержкой match
+interface CustomContext extends Context<Update> {
+  match: RegExpMatchArray;
 }
 
 @Injectable()
@@ -22,24 +28,23 @@ export class BotService {
     }
     this.bot = new Telegraf(botToken);
 
-    this.setupHandlers();
-    this.bot.launch().then(() => {
-      console.log('Бот запущен!');
+    this.setupHandlers().catch((error) => {
+      console.error('Ошибка при настройке бота:', error);
     });
 
     process.once('SIGINT', () => this.bot.stop('SIGINT'));
     process.once('SIGTERM', () => this.bot.stop('SIGTERM'));
   }
 
-  private setupHandlers() {
+  private async setupHandlers() {
     // Обработка команды /start
     this.bot.start(async (ctx: Context) => {
       const userName = ctx.from?.first_name || 'пользователь';
       await ctx.reply(
         `Привет, ${userName}! Выбери тест:`,
         Markup.inlineKeyboard([
-          Markup.button.callback('На сколько вы осведомлены о МТД', 'test1'),
-          Markup.button.callback('Тест на ДМТД', 'test2'),
+          [Markup.button.callback('На сколько вы осведомлены о МТД', 'test1')],
+          [Markup.button.callback('Тест на ДМТД', 'test2')],
         ]),
       );
     });
@@ -70,11 +75,11 @@ export class BotService {
     });
 
     // Обработка ответов на вопросы
-    this.bot.action(/.*/, async (ctx: Context) => {
+    this.bot.action(/.*/, async (ctx: CustomContext) => {
       const userId = ctx.from?.id;
       if (!userId || !this.userSessions[userId]) return;
 
-      const userAnswer = ctx.match[0];
+      const userAnswer = ctx.match[0]; // Теперь TypeScript знает, что ctx.match существует
       const session = this.userSessions[userId];
 
       const currentTest =
@@ -97,10 +102,12 @@ export class BotService {
           await ctx.reply(
             'Если хотя бы один вопрос заставил вас задуматься, уверена: вам будет интересно у меня в тг-канале:',
             Markup.inlineKeyboard([
-              Markup.button.url(
-                'Перейти в канал',
-                'https://t.me/softPower_yoga',
-              ),
+              [
+                Markup.button.url(
+                  'Перейти в канал',
+                  'https://t.me/softPower_yoga',
+                ),
+              ],
             ]),
           );
         }
@@ -111,6 +118,14 @@ export class BotService {
       // Отправляем следующий вопрос
       await this.sendQuestion(ctx);
     });
+
+    // Запуск бота
+    try {
+      await this.bot.launch();
+      console.log('Бот запущен!');
+    } catch (error) {
+      console.error('Ошибка при запуске бота:', error);
+    }
   }
 
   private async sendQuestion(ctx: Context) {
@@ -125,7 +140,9 @@ export class BotService {
     const question = currentTest[session.currentQuestion];
 
     const keyboard = Markup.inlineKeyboard(
-      question.options.map((option) => Markup.button.callback(option, option)),
+      question.options.map((option) => [
+        Markup.button.callback(option, option),
+      ]),
     );
 
     await ctx.reply(question.text, keyboard);
@@ -139,7 +156,7 @@ export class BotService {
         '🔹 0–3 «Да» – Вероятно, у вас нет выраженных проблем, но знания о тазовом дне минимальны. Регулярная профилактика поможет сохранить здоровье.';
     } else if (yesCount >= 4 && yesCount <= 7) {
       resultMessage +=
-        '🔹 4–7 «Да» – Возможны начальные нарушения. Рекомендуется уделить внимание укреплению или расслаблению мышц тазового дна.';
+        '🔹 4–7 «Да» – Возможны начальные нарушения. Рекомендуется уделить внимание укреплению или расслаблению мышц тазового дне.';
     } else if (yesCount >= 8 && yesCount <= 12) {
       resultMessage +=
         '🔹 8–12 «Да» – Высокий риск дисфункции. Важно пройти диагностику у специалиста и подобрать корректные упражнения.';
@@ -151,9 +168,9 @@ export class BotService {
     await ctx.reply(resultMessage, Markup.removeKeyboard());
 
     await ctx.reply(
-      'Если вы хотите узнать больше о профилактике дисфункции мышц тазового дна, рекомендуем приобрести наш гайд:',
+      'Если вы хотите узнать больше о профилактике дисфункции мышц тазового дне, рекомендуем приобрести наш гайд:',
       Markup.inlineKeyboard([
-        Markup.button.url('Купить гайд', 'https://t.me/k_nazarovaaa'),
+        [Markup.button.url('Купить гайд', 'https://t.me/k_nazarovaaa')],
       ]),
     );
   }
