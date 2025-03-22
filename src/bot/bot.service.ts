@@ -104,23 +104,6 @@ export class BotService {
     process.once('SIGTERM', () => this.bot.stop('SIGTERM'));
   }
 
-  private async sendQuestion(ctx) {
-    const userId = ctx.from.id;
-    const session = this.userSessions[userId];
-
-    if (!session) return;
-
-    const currentTest =
-      session.testType === 'На сколько вы осведомлены о МТД'
-        ? questions
-        : questionsTest2;
-
-    const question = currentTest[session.currentQuestion];
-    const keyboard = Markup.keyboard(question.options).oneTime().resize();
-
-    await ctx.reply(question.text, keyboard);
-  }
-
   private async sendTest2Result(ctx, yesCount) {
     let resultMessage = `Количество ответов "Да": ${yesCount}\n\n`;
 
@@ -141,11 +124,13 @@ export class BotService {
     // Отправляем результат теста
     await ctx.reply(resultMessage, Markup.removeKeyboard());
 
-    // Добавляем сообщение с предложением купить гайд
+    // Добавляем inline-кнопки
     await ctx.reply(
-      'Если вы хотите узнать больше о профилактике дисфункции мышц тазового дна, рекомендуем приобрести наш гайд:',
+      'Выберите действие:',
       Markup.inlineKeyboard([
-        Markup.button.url('Купить гайд', 'https://t.me/k_nazarovaaa'), // Замените ссылку на реальную
+        [Markup.button.url('Купить гайд', 'https://t.me/k_nazarovaaa')], // Кнопка с ссылкой
+        [Markup.button.callback('Подтвердить', 'confirm_action')], // Кнопка с callback
+        [Markup.button.callback('Отменить', 'cancel_action')], // Кнопка с callback
       ]),
     );
   }
