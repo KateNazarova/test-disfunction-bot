@@ -20,9 +20,7 @@ export class BotService {
       const userName = ctx.from.first_name || 'пользователь';
       await ctx.reply(
         `Привет, ${userName}! Выбери тест:`,
-        Markup.keyboard([
-          ['На сколько вы осведомлены о МТД', 'Тест на ДМТД'],
-        ]) // Кнопки для выбора теста
+        Markup.keyboard([['На сколько вы осведомлены о МТД', 'Тест на ДМТД']]) // Кнопки для выбора теста
           .oneTime()
           .resize(),
       );
@@ -34,9 +32,7 @@ export class BotService {
 
       // Если пользователь выбирает тест
       if (
-        ['На сколько вы осведомлены о МТД', 'Тест на ДМТД'].includes(
-          userText,
-        )
+        ['На сколько вы осведомлены о МТД', 'Тест на ДМТД'].includes(userText)
       ) {
         if (!this.userSessions[userId]) {
           this.userSessions[userId] = {
@@ -52,21 +48,29 @@ export class BotService {
       }
 
       // Если сессия существует
+
       if (this.userSessions[userId]) {
         const session = this.userSessions[userId];
         const currentTest =
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
           session.testType === 'На сколько вы осведомлены о МТД'
             ? questions
             : questionsTest2;
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
         const currentQuestion = currentTest[session.currentQuestion];
 
         // Сохраняем ответ
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
         session.answers[currentQuestion.text] = ctx.message.text;
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
         session.currentQuestion++;
 
         // Если тест завершен
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
         if (session.currentQuestion >= currentTest.length) {
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
           if (session.testType === 'Тест на ДМТД') {
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
             const yesCount = Object.values(session.answers).filter(
               (answer) => (answer as string).toLowerCase() === 'да',
             ).length;
