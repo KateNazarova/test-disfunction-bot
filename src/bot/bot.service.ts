@@ -180,18 +180,25 @@ export class BotService {
 
     await ctx.reply(resultMessage, Markup.removeKeyboard());
 
-    await ctx.replyWithPhoto(
-      {
-        source: 'card.jpg',
-      },
-      {
-        caption:
-          'Если вы хотите узнать больше о профилактике дисфункции мышц тазового дне, рекомендуем приобрести наш гайд:',
-        ...Markup.inlineKeyboard([
-          [Markup.button.url('Купить гайд', 'https://t.me/k_nazarovaaa')],
-        ]),
-      },
-    );
+    try {
+      await ctx.replyWithPhoto(
+        {
+          source: './src/assets/card.jpg',
+        },
+        {
+          caption:
+            'Если вы хотите узнать больше о профилактике дисфункции мышц тазового дне, рекомендуем приобрести наш гайд:',
+          ...Markup.inlineKeyboard([
+            [Markup.button.url('Купить гайд', 'https://t.me/k_nazarovaaa')],
+          ]),
+        },
+      );
+    } catch (error) {
+      console.error('Ошибка при отправке фото:', error);
+      await ctx.reply(
+        'Извините, произошла ошибка при отправке фото. Пожалуйста, попробуйте позже.',
+      );
+    }
 
     await ctx.reply(
       'Хотите пройти другой тест?',
