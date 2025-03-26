@@ -167,11 +167,17 @@ export class BotService {
 
     await ctx.reply(resultMessage, Markup.removeKeyboard());
 
-    await ctx.reply(
-      'Если вы хотите узнать больше о профилактике дисфункции мышц тазового дне, рекомендуем приобрести наш гайд:',
-      Markup.inlineKeyboard([
-        [Markup.button.url('Купить гайд', 'https://t.me/k_nazarovaaa')],
-      ]),
+    await ctx.replyWithPhoto(
+      {
+        source: 'card.jpg',
+      },
+      {
+        caption:
+          'Если вы хотите узнать больше о профилактике дисфункции мышц тазового дне, рекомендуем приобрести наш гайд:',
+        ...Markup.inlineKeyboard([
+          [Markup.button.url('Купить гайд', 'https://t.me/k_nazarovaaa')],
+        ]),
+      },
     );
   }
 }
