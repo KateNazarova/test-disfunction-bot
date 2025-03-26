@@ -110,6 +110,19 @@ export class BotService {
               ],
             ]),
           );
+
+          await ctx.reply(
+            'Хотите пройти другой тест?',
+            Markup.inlineKeyboard([
+              [
+                Markup.button.callback(
+                  'На сколько вы осведомлены о МТД',
+                  'test1',
+                ),
+              ],
+              [Markup.button.callback('Тест на ДМТД', 'test2')],
+            ]),
+          );
         }
         delete this.userSessions[userId];
         return;
@@ -178,6 +191,14 @@ export class BotService {
           [Markup.button.url('Купить гайд', 'https://t.me/k_nazarovaaa')],
         ]),
       },
+    );
+
+    await ctx.reply(
+      'Хотите пройти другой тест?',
+      Markup.inlineKeyboard([
+        [Markup.button.callback('На сколько вы осведомлены о МТД', 'test1')],
+        [Markup.button.callback('Тест на ДМТД', 'test2')],
+      ]),
     );
   }
 }
