@@ -54,6 +54,9 @@ export class BotService {
       const userId = ctx.from?.id;
       if (!userId) return;
 
+      // Очищаем предыдущую сессию, если она есть
+      delete this.userSessions[userId];
+
       this.userSessions[userId] = {
         currentQuestion: 0,
         answers: {},
@@ -65,6 +68,9 @@ export class BotService {
     this.bot.action('test2', async (ctx: Context) => {
       const userId = ctx.from?.id;
       if (!userId) return;
+
+      // Очищаем предыдущую сессию, если она есть
+      delete this.userSessions[userId];
 
       this.userSessions[userId] = {
         currentQuestion: 0,
@@ -111,8 +117,9 @@ export class BotService {
             ]),
           );
 
+          const userName = ctx.from?.first_name || 'пользователь';
           await ctx.reply(
-            'Хотите пройти другой тест?',
+            `Привет, ${userName}! Выбери тест:`,
             Markup.inlineKeyboard([
               [
                 Markup.button.callback(
@@ -200,8 +207,9 @@ export class BotService {
       );
     }
 
+    const userName = ctx.from?.first_name || 'пользователь';
     await ctx.reply(
-      'Хотите пройти другой тест?',
+      `Привет, ${userName}! Выбери тест:`,
       Markup.inlineKeyboard([
         [Markup.button.callback('На сколько вы осведомлены о МТД', 'test1')],
         [Markup.button.callback('Тест на ДМТД', 'test2')],
