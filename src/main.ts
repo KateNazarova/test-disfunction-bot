@@ -8,15 +8,23 @@ async function bootstrap() {
   const defaultPort = Number(process.env.PORT) ?? 3000;
   let port = defaultPort;
 
+  console.log(`Attempting to start server on port ${port}...`);
+
   try {
     await app.listen(port, '0.0.0.0');
     console.log(`Application is running on port ${port}`);
   } catch (error: any) {
+    console.error('Error starting server:', error);
     if (error?.code === 'EADDRINUSE') {
       console.log(`Port ${port} is in use, trying ${port + 1}`);
       port = defaultPort + 1;
-      await app.listen(port, '0.0.0.0');
-      console.log(`Application is running on port ${port}`);
+      try {
+        await app.listen(port, '0.0.0.0');
+        console.log(`Application is running on port ${port}`);
+      } catch (retryError) {
+        console.error('Error starting server on alternative port:', retryError);
+        throw retryError;
+      }
     } else {
       throw error;
     }
