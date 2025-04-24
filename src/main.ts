@@ -14,7 +14,8 @@ async function bootstrap() {
   console.log(`Attempting to start server on port ${port}...`);
 
   // Настройка URL для webhook, например:
-  const webhookUrl = `https://your-server-url.com/telegraf`; // Убедитесь, что указали правильный URL
+  const webhookUrl =
+    'https://katenazarova-test-disfunction-bot-749e.twc1.net/telegraf'; // Убедитесь, что указали правильный URL
 
   try {
     // Устанавливаем webhook через botService
