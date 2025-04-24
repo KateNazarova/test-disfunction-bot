@@ -22,16 +22,29 @@ export class BotService {
   private userSessions: Record<number, UserSession> = {};
 
   constructor(private configService: ConfigService) {
+    console.log('Инициализация BotService...');
+
     const botToken = this.configService.get<string>('BOT_TOKEN');
     if (!botToken) {
-      throw new Error('BOT_TOKEN is not defined in the environment variables.');
+      throw new Error('BOT_TOKEN не указан в переменных окружения');
     }
+
+    console.log(
+      'Токен получен, первые 5 символов:',
+      botToken.substring(0, 5) + '...',
+    );
     this.bot = new Telegraf(botToken);
 
-    this.setupHandlers().catch((error) => {
-      console.error('Ошибка при настройке бота:', error);
-    });
+    // Настраиваем обработчики
+    this.setupHandlers();
 
+    // Запускаем бота сразу
+    this.bot
+      .launch()
+      .then(() => console.log('Бот успешно запущен'))
+      .catch((error) => console.error('Ошибка запуска бота:', error));
+
+    // Обработка завершения
     process.once('SIGINT', () => this.bot.stop('SIGINT'));
     process.once('SIGTERM', () => this.bot.stop('SIGTERM'));
   }
@@ -82,6 +95,7 @@ export class BotService {
 
     // Обработка кнопки "Узнать подробнее"
     this.bot.action('show_guide_details', async (ctx: Context) => {
+      console.log('Кнопка show_guide_details нажата');
       const guideText = `ГАЙД «ЖИЗНЬ С ДИСФУНКЦИЯМИ МЫШЦ ТАЗОВОГО ДНА»
 
 Почему этот гайд – must-have для каждой женщины?
@@ -184,78 +198,81 @@ export class BotService {
       }
     });
 
-    // Обработка ответов на вопросы
-    this.bot.action(/.*/, async (ctx: CustomContext) => {
-      const userId = ctx.from?.id;
-      if (!userId || !this.userSessions[userId]) return;
-
-      const userAnswer = ctx.match[0];
-      const session = this.userSessions[userId];
-
-      const currentTest =
-        session.testType === 'На сколько вы осведомлены о МТД'
-          ? questions
-          : questionsTest2;
-      const currentQuestion = currentTest[session.currentQuestion];
-
-      session.answers[currentQuestion.text] = userAnswer;
-      session.currentQuestion++;
-
-      // Если тест завершен
-      if (session.currentQuestion >= currentTest.length) {
-        if (session.testType === 'Тест на ДМТД') {
-          const yesCount = Object.values(session.answers).filter(
-            (answer) => answer.toLowerCase() === 'да',
-          ).length;
-          await this.sendTest2Result(ctx, yesCount);
-        } else {
-          await ctx.reply(
-            'Если хотя бы один вопрос заставил вас задуматься, уверена: вам будет интересно у меня в тг-канале:',
-            Markup.inlineKeyboard([
-              [
-                Markup.button.url(
-                  'Перейти в канал',
-                  'https://t.me/softPower_yoga',
-                ),
-              ],
-              [
-                Markup.button.url(
-                  'Купить гайд за 911 рублей',
-                  'https://t.me/k_nazarovaaa',
-                ),
-              ],
-              [
-                Markup.button.callback(
-                  'Узнать подробнее',
-                  'show_guide_details',
-                ),
-              ],
-            ]),
-          );
-
-          await ctx.reply(
-            'Хотите пройти тест еще раз?',
-            Markup.keyboard([
-              ['На сколько вы осведомлены о МТД', 'Тест на ДМТД'],
-              ['Купить гайд'],
-            ]).resize(),
-          );
-        }
-        delete this.userSessions[userId];
-        return;
-      }
-
-      // Отправляем следующий вопрос
-      await this.sendQuestion(ctx);
+    // Обработка кнопки "Купить за 911 рублей"
+    this.bot.action('buy_guide', async (ctx) => {
+      console.log('Кнопка buy_guide нажата');
+      // Ваш код для обработки оплаты
+      ctx.reply('Обработка платежа...');
     });
 
-    // Запуск бота
-    try {
-      await this.bot.launch();
-      console.log('Бот запущен!');
-    } catch (error) {
-      console.error('Ошибка при запуске бота:', error);
-    }
+    // Регистрируем обработчик с регулярным выражением ПОСЛЕ конкретных обработчиков
+    this.bot.action(
+      /(?!buy_guide|show_guide_details).*/,
+      async (ctx: CustomContext) => {
+        console.log('Сработал общий обработчик action:', ctx.match[0]);
+        const userId = ctx.from?.id;
+        if (!userId || !this.userSessions[userId]) return;
+
+        const userAnswer = ctx.match[0];
+        const session = this.userSessions[userId];
+
+        const currentTest =
+          session.testType === 'На сколько вы осведомлены о МТД'
+            ? questions
+            : questionsTest2;
+        const currentQuestion = currentTest[session.currentQuestion];
+
+        session.answers[currentQuestion.text] = userAnswer;
+        session.currentQuestion++;
+
+        // Если тест завершен
+        if (session.currentQuestion >= currentTest.length) {
+          if (session.testType === 'Тест на ДМТД') {
+            const yesCount = Object.values(session.answers).filter(
+              (answer) => answer.toLowerCase() === 'да',
+            ).length;
+            await this.sendTest2Result(ctx, yesCount);
+          } else {
+            await ctx.reply(
+              'Если хотя бы один вопрос заставил вас задуматься, уверена: вам будет интересно у меня в тг-канале:',
+              Markup.inlineKeyboard([
+                [
+                  Markup.button.url(
+                    'Перейти в канал',
+                    'https://t.me/softPower_yoga',
+                  ),
+                ],
+                [
+                  Markup.button.url(
+                    'Купить гайд за 911 рублей',
+                    'https://t.me/k_nazarovaaa',
+                  ),
+                ],
+                [
+                  Markup.button.callback(
+                    'Узнать подробнее',
+                    'show_guide_details',
+                  ),
+                ],
+              ]),
+            );
+
+            await ctx.reply(
+              'Хотите пройти тест еще раз?',
+              Markup.keyboard([
+                ['На сколько вы осведомлены о МТД', 'Тест на ДМТД'],
+                ['Купить гайд'],
+              ]).resize(),
+            );
+          }
+          delete this.userSessions[userId];
+          return;
+        }
+
+        // Отправляем следующий вопрос
+        await this.sendQuestion(ctx);
+      },
+    );
   }
 
   private async sendQuestion(ctx: Context) {
