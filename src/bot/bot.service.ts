@@ -29,14 +29,8 @@ export class BotService {
     }
     this.bot = new Telegraf(botToken);
 
-    // Настраиваем обработчики
+    // Настроим обработчики
     this.setupHandlers();
-
-    // Запускаем бота сразу
-    this.bot
-      .launch()
-      .then(() => console.log('Бот успешно запущен'))
-      .catch((error) => console.error('Ошибка запуска бота:', error));
 
     // Обработка завершения
     process.once('SIGINT', () => this.bot.stop('SIGINT'));
@@ -48,29 +42,24 @@ export class BotService {
   }
 
   private async setupHandlers() {
+    // Стартовое сообщение
     this.bot.start((ctx: Context) => {
       const userName = ctx.from?.first_name || 'пользователь';
-
-      // Используем асинхронную функцию внутри обработчика
-      const sendMessage = async () => {
-        await ctx.reply(
-          `Привет, ${userName}! Выбери тест:`,
-          Markup.keyboard([
-            ['На сколько вы осведомлены о МТД', 'Тест на ДМТД'],
-            ['Купить гайд'],
-          ]).resize(),
-        );
-      };
-
-      sendMessage(); // Вызываем асинхронную функцию
+      ctx.reply(
+        `Привет, ${userName}! Выбери тест:`,
+        Markup.keyboard([
+          ['На сколько вы осведомлены о МТД', 'Тест на ДМТД'],
+          ['Купить гайд'],
+        ]).resize(),
+      );
     });
 
+    // Обработка команды на тест "На сколько вы осведомлены о МТД"
     this.bot.hears('На сколько вы осведомлены о МТД', async (ctx: Context) => {
       const userId = ctx.from?.id;
       if (!userId) return;
 
       delete this.userSessions[userId];
-
       this.userSessions[userId] = {
         currentQuestion: 0,
         answers: {},
@@ -79,12 +68,12 @@ export class BotService {
       await this.sendQuestion(ctx);
     });
 
+    // Обработка команды на тест "Тест на ДМТД"
     this.bot.hears('Тест на ДМТД', async (ctx: Context) => {
       const userId = ctx.from?.id;
       if (!userId) return;
 
       delete this.userSessions[userId];
-
       this.userSessions[userId] = {
         currentQuestion: 0,
         answers: {},
@@ -93,78 +82,18 @@ export class BotService {
       await this.sendQuestion(ctx);
     });
 
-    this.bot.action('show_guide_details', async (ctx: Context) => {
-      const guideText = `ГАЙД «ЖИЗНЬ С ДИСФУНКЦИЯМИ МЫШЦ ТАЗОВОГО ДНА»
-
-Почему этот гайд – must-have для каждой женщины?
-🔹 Понятные объяснения, как контролировать внутрибрюшное давление
-🔹 Практичные советы на каждый день
-🔹 Упражнение после, которого вы почувствуете мышцы тазового дна 
-
-💡 Для кого это?
-— Молодые мамы, которые хотят восстановиться после родов
-— Женщины, заметившие «первые звоночки» (недержание мочи, боли внизу живота)
-— Те, кто устал от "пукающих звуков" из влагалища
-
-📌 «Это не про стыд, это про заботу о себе. Ваше тело заслуживает комфорта!»
-
-💰 Стоимость гайда: 911 рублей`;
-
-      try {
-        await ctx.replyWithPhoto(
-          { source: './src/assets/card.jpg' },
-          {
-            caption: guideText,
-            ...Markup.inlineKeyboard([
-              [
-                Markup.button.url(
-                  'Купить за 911 рублей',
-                  'https://t.me/k_nazarovaaa',
-                ),
-              ],
-            ]),
-          },
-        );
-      } catch (error) {
-        console.error('Ошибка при отправке фото:', error);
-        await ctx.reply(guideText);
-      }
-    });
-
+    // Обработка кнопки "Купить гайд"
     this.bot.hears('Купить гайд', async (ctx: Context) => {
-      const guideText = `ГАЙД «ЖИЗНЬ С ДИСФУНКЦИЯМИ МЫШЦ ТАЗОВОГО ДНА» ...
-
-💰 Стоимость гайда: 911 рублей`;
-
-      try {
-        await ctx.replyWithPhoto(
-          { source: './src/assets/card.jpg' },
-          {
-            caption: guideText,
-            ...Markup.inlineKeyboard([
-              [
-                Markup.button.url(
-                  'Купить за 911 рублей',
-                  'https://t.me/k_nazarovaaa',
-                ),
-              ],
-            ]),
-          },
-        );
-      } catch (error) {
-        console.error('Ошибка при отправке фото:', error);
-        await ctx.reply(guideText);
-      }
+      await this.sendGuide(ctx);
     });
 
-    // Обработка ответов на вопросы
+    // Обработка действий пользователя
     this.bot.action(/.*/, async (ctx: CustomContext) => {
       const userId = ctx.from?.id;
       if (!userId || !this.userSessions[userId]) return;
 
       const userAnswer = ctx.match[0];
       const session = this.userSessions[userId];
-
       const currentTest =
         session.testType === 'На сколько вы осведомлены о МТД'
           ? questions
@@ -174,7 +103,6 @@ export class BotService {
       session.answers[currentQuestion.text] = userAnswer;
       session.currentQuestion++;
 
-      // Если тест завершен
       if (session.currentQuestion >= currentTest.length) {
         if (session.testType === 'Тест на ДМТД') {
           const yesCount = Object.values(session.answers).filter(
@@ -182,43 +110,12 @@ export class BotService {
           ).length;
           await this.sendTest2Result(ctx, yesCount);
         } else {
-          await ctx.reply(
-            'Если хотя бы один вопрос заставил вас задуматься, уверена: вам будет интересно у меня в тг-канале:',
-            Markup.inlineKeyboard([
-              [
-                Markup.button.url(
-                  'Перейти в канал',
-                  'https://t.me/softPower_yoga',
-                ),
-              ],
-              [
-                Markup.button.url(
-                  'Купить гайд за 911 рублей',
-                  'https://t.me/k_nazarovaaa',
-                ),
-              ],
-              [
-                Markup.button.callback(
-                  'Узнать подробнее',
-                  'show_guide_details',
-                ),
-              ],
-            ]),
-          );
-
-          await ctx.reply(
-            'Хотите пройти тест еще раз?',
-            Markup.keyboard([
-              ['На сколько вы осведомлены о МТД', 'Тест на ДМТД'],
-              ['Купить гайд'],
-            ]).resize(),
-          );
+          await this.handleTestCompletion(ctx);
         }
         delete this.userSessions[userId];
         return;
       }
 
-      // Отправляем следующий вопрос
       await this.sendQuestion(ctx);
     });
 
@@ -286,5 +183,63 @@ export class BotService {
         ['Купить гайд'],
       ]).resize(),
     );
+  }
+
+  private async handleTestCompletion(ctx: Context) {
+    await ctx.reply(
+      'Если хотя бы один вопрос заставил вас задуматься, уверена: вам будет интересно у меня в тг-канале:',
+      Markup.inlineKeyboard([
+        [Markup.button.url('Перейти в канал', 'https://t.me/softPower_yoga')],
+        [
+          Markup.button.url(
+            'Купить гайд за 911 рублей',
+            'https://t.me/k_nazarovaaa',
+          ),
+        ],
+        [Markup.button.callback('Узнать подробнее', 'show_guide_details')],
+      ]),
+    );
+
+    await ctx.reply(
+      'Хотите пройти тест еще раз?',
+      Markup.keyboard([
+        ['На сколько вы осведомлены о МТД', 'Тест на ДМТД'],
+        ['Купить гайд'],
+      ]).resize(),
+    );
+  }
+
+  private async sendGuide(ctx: Context) {
+    const guideText = `ГАЙД «ЖИЗНЬ С ДИСФУНКЦИЯМИ МЫШЦ ТАЗОВОГО ДНА» ...\n\n💰 Стоимость гайда: 911 рублей`;
+
+    try {
+      await ctx.replyWithPhoto(
+        { source: './src/assets/card.jpg' },
+        {
+          caption: guideText,
+          ...Markup.inlineKeyboard([
+            [
+              Markup.button.url(
+                'Купить за 911 рублей',
+                'https://t.me/k_nazarovaaa',
+              ),
+            ],
+          ]),
+        },
+      );
+    } catch (error) {
+      console.error('Ошибка при отправке фото:', error);
+      await ctx.reply(guideText);
+    }
+  }
+
+  // Метод для установки webhook
+  public async setWebhook(url: string): Promise<void> {
+    try {
+      await this.bot.telegram.setWebhook(url);
+      console.log(`Webhook установлен на: ${url}`);
+    } catch (error) {
+      console.error('Ошибка при установке webhook:', error);
+    }
   }
 }

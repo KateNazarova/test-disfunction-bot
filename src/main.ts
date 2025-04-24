@@ -1,20 +1,30 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
+import { BotService } from './bot/bot.service'; // Импортируем BotService
 
 async function bootstrap() {
   console.log('Starting application...');
   const app = await NestFactory.create(AppModule);
+
+  const botService = app.get(BotService); // Получаем экземпляр BotService
 
   const defaultPort = Number(process.env.PORT) || 3000;
   let port = defaultPort;
 
   console.log(`Attempting to start server on port ${port}...`);
 
+  // Настройка URL для webhook, например:
+  const webhookUrl = `https://your-server-url.com/telegraf`; // Убедитесь, что указали правильный URL
+
   try {
+    // Устанавливаем webhook через botService
+    await botService.setWebhook(webhookUrl);
+
+    // Запускаем сервер
     await app.listen(port, '0.0.0.0');
     console.log(`Application is running on port ${port}`);
   } catch (error: unknown) {
-    console.error('Error starting server:', error);
+    console.error('Error starting server or setting webhook:', error);
     if (
       error &&
       typeof error === 'object' &&
