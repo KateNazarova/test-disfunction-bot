@@ -21,17 +21,24 @@ export class BotService {
   private userSessions: Record<number, UserSession> = {};
 
   constructor(private configService: ConfigService) {
+    console.log('Инициализация BotService...');
+
     const botToken = this.configService.get<string>('BOT_TOKEN');
     if (!botToken) {
-      throw new Error('BOT_TOKEN is not defined in the environment variables.');
+      throw new Error('BOT_TOKEN не указан в переменных окружения');
     }
-
     this.bot = new Telegraf(botToken);
 
-    this.setupHandlers().catch((error) => {
-      console.error('Ошибка при настройке бота:', error);
-    });
+    // Настраиваем обработчики
+    this.setupHandlers();
 
+    // Запускаем бота сразу
+    this.bot
+      .launch()
+      .then(() => console.log('Бот успешно запущен'))
+      .catch((error) => console.error('Ошибка запуска бота:', error));
+
+    // Обработка завершения
     process.once('SIGINT', () => this.bot.stop('SIGINT'));
     process.once('SIGTERM', () => this.bot.stop('SIGTERM'));
   }
@@ -41,15 +48,21 @@ export class BotService {
   }
 
   private async setupHandlers() {
-    this.bot.start(async (ctx: Context) => {
+    this.bot.start((ctx: Context) => {
       const userName = ctx.from?.first_name || 'пользователь';
-      await ctx.reply(
-        `Привет, ${userName}! Выбери тест:`,
-        Markup.keyboard([
-          ['На сколько вы осведомлены о МТД', 'Тест на ДМТД'],
-          ['Купить гайд'],
-        ]).resize(),
-      );
+
+      // Используем асинхронную функцию внутри обработчика
+      const sendMessage = async () => {
+        await ctx.reply(
+          `Привет, ${userName}! Выбери тест:`,
+          Markup.keyboard([
+            ['На сколько вы осведомлены о МТД', 'Тест на ДМТД'],
+            ['Купить гайд'],
+          ]).resize(),
+        );
+      };
+
+      sendMessage(); // Вызываем асинхронную функцию
     });
 
     this.bot.hears('На сколько вы осведомлены о МТД', async (ctx: Context) => {
@@ -81,7 +94,19 @@ export class BotService {
     });
 
     this.bot.action('show_guide_details', async (ctx: Context) => {
-      const guideText = `ГАЙД «ЖИЗНЬ С ДИСФУНКЦИЯМИ МЫШЦ ТАЗОВОГО ДНА» ...
+      const guideText = `ГАЙД «ЖИЗНЬ С ДИСФУНКЦИЯМИ МЫШЦ ТАЗОВОГО ДНА»
+
+Почему этот гайд – must-have для каждой женщины?
+🔹 Понятные объяснения, как контролировать внутрибрюшное давление
+🔹 Практичные советы на каждый день
+🔹 Упражнение после, которого вы почувствуете мышцы тазового дна 
+
+💡 Для кого это?
+— Молодые мамы, которые хотят восстановиться после родов
+— Женщины, заметившие «первые звоночки» (недержание мочи, боли внизу живота)
+— Те, кто устал от "пукающих звуков" из влагалища
+
+📌 «Это не про стыд, это про заботу о себе. Ваше тело заслуживает комфорта!»
 
 💰 Стоимость гайда: 911 рублей`;
 
@@ -132,6 +157,7 @@ export class BotService {
       }
     });
 
+    // Обработка ответов на вопросы
     this.bot.action(/.*/, async (ctx: CustomContext) => {
       const userId = ctx.from?.id;
       if (!userId || !this.userSessions[userId]) return;
@@ -148,6 +174,7 @@ export class BotService {
       session.answers[currentQuestion.text] = userAnswer;
       session.currentQuestion++;
 
+      // Если тест завершен
       if (session.currentQuestion >= currentTest.length) {
         if (session.testType === 'Тест на ДМТД') {
           const yesCount = Object.values(session.answers).filter(
@@ -156,7 +183,7 @@ export class BotService {
           await this.sendTest2Result(ctx, yesCount);
         } else {
           await ctx.reply(
-            'Если хотя бы один вопрос заставил вас задуматься...',
+            'Если хотя бы один вопрос заставил вас задуматься, уверена: вам будет интересно у меня в тг-канале:',
             Markup.inlineKeyboard([
               [
                 Markup.button.url(
@@ -164,7 +191,12 @@ export class BotService {
                   'https://t.me/softPower_yoga',
                 ),
               ],
-              [Markup.button.url('Купить гайд', 'https://t.me/k_nazarovaaa')],
+              [
+                Markup.button.url(
+                  'Купить гайд за 911 рублей',
+                  'https://t.me/k_nazarovaaa',
+                ),
+              ],
               [
                 Markup.button.callback(
                   'Узнать подробнее',
@@ -186,9 +218,11 @@ export class BotService {
         return;
       }
 
+      // Отправляем следующий вопрос
       await this.sendQuestion(ctx);
     });
 
+    // Запуск бота
     try {
       await this.bot.launch();
       console.log('Бот запущен!');
