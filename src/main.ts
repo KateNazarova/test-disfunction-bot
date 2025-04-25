@@ -1,53 +1,76 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { BotService } from './bot/bot.service'; // Импортируем BotService
+import { Logger } from '@nestjs/common';
+
+interface SystemError extends Error {
+  code?: string;
+  syscall?: string;
+  address?: string;
+  port?: number;
+}
 
 async function bootstrap() {
-  console.log('Starting application...');
-  const app = await NestFactory.create(AppModule);
-
-  const botService = app.get(BotService); // Получаем экземпляр BotService
-
-  const defaultPort = Number(process.env.PORT) || 3000;
-  let port = defaultPort;
-
-  console.log(`Attempting to start server on port ${port}...`);
-
-  // Настройка URL для webhook, например:
-  const webhookUrl =
-    'https://katenazarova-test-disfunction-bot-749e.twc1.net/telegraf'; // Убедитесь, что указали правильный URL
-
+  const logger = new Logger('Bootstrap');
   try {
-    // Устанавливаем webhook через botService
-    await botService.setWebhook(webhookUrl);
+    logger.log('Starting application initialization...');
 
-    // Запускаем сервер
-    await app.listen(port, '0.0.0.0');
-    console.log(`Application is running on port ${port}`);
-  } catch (error: unknown) {
-    console.error('Error starting server or setting webhook:', error);
-    if (
-      error &&
-      typeof error === 'object' &&
-      'code' in error &&
-      error.code === 'EADDRINUSE'
-    ) {
-      console.log(`Port ${port} is in use, trying ${port + 1}`);
-      port = defaultPort + 1;
-      try {
-        await app.listen(port, '0.0.0.0');
-        console.log(`Application is running on port ${port}`);
-      } catch (retryError) {
-        console.error('Error starting server on alternative port:', retryError);
-        throw retryError;
-      }
-    } else {
-      throw error;
-    }
+    const app = await NestFactory.create(AppModule);
+    const defaultPort = parseInt(process.env.PORT || '3000', 10);
+    const maxPortAttempts = 5;
+
+    await startServerWithPortRetry(app, defaultPort, maxPortAttempts, logger);
+
+    logger.log('Application successfully started');
+  } catch (error) {
+    handleFatalError(error, logger);
   }
 }
 
+async function startServerWithPortRetry(
+  app: any,
+  initialPort: number,
+  maxAttempts: number,
+  logger: Logger,
+): Promise<void> {
+  let attempts = 0;
+  let currentPort = initialPort;
+
+  while (attempts < maxAttempts) {
+    try {
+      await app.listen(currentPort, '0.0.0.0');
+      logger.log(`Application running on port ${currentPort}`);
+      return;
+    } catch (error) {
+      if (isSystemError(error) && error.code === 'EADDRINUSE') {
+        attempts++;
+        currentPort++;
+        logger.warn(
+          `Port ${currentPort - 1} in use, trying ${currentPort} (attempt ${attempts}/${maxAttempts})...`,
+        );
+        continue;
+      }
+      throw error;
+    }
+  }
+
+  throw new Error(
+    `Could not find available port after ${maxAttempts} attempts`,
+  );
+}
+
+function isSystemError(error: unknown): error is SystemError {
+  return error instanceof Error && 'code' in error;
+}
+
+function handleFatalError(error: unknown, logger: Logger): never {
+  const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+  const errorStack = error instanceof Error ? error.stack : undefined;
+
+  logger.error('Fatal application error', errorMessage, errorStack);
+  process.exit(1);
+}
+
 bootstrap().catch((error) => {
-  console.error('Ошибка при запуске приложения:', error);
-  process.exit(1); // Завершаем процесс с кодом ошибки
+  const logger = new Logger('Bootstrap');
+  handleFatalError(error, logger);
 });
