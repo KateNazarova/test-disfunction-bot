@@ -43,9 +43,9 @@ export class BotService {
 
   private async setupHandlers() {
     // Стартовое сообщение
-    this.bot.start((ctx: Context) => {
+    this.bot.start(async (ctx: Context) => {
       const userName = ctx.from?.first_name || 'пользователь';
-      ctx.reply(
+      await ctx.reply(
         `Привет, ${userName}! Выбери тест:`,
         Markup.keyboard([
           ['На сколько вы осведомлены о МТД', 'Тест на ДМТД'],
