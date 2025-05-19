@@ -112,7 +112,7 @@ export class BotService {
 
       try {
         await ctx.replyWithPhoto(
-          { source: './src/assets/card.jpg' }, // или URL, если изображение в интернете
+          { source: './src/assets/card1.png' }, // или URL, если изображение в интернете
           {
             caption: guideText,
             parse_mode: 'Markdown', // или 'HTML', если нужно форматирование
@@ -162,7 +162,7 @@ export class BotService {
 
       try {
         await ctx.replyWithPhoto(
-          { source: './src/assets/card.jpg' },
+          { source: './src/assets/card1.png' },
           {
             caption: guideText,
             ...Markup.inlineKeyboard([
