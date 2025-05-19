@@ -168,7 +168,7 @@ export class BotService {
             ...Markup.inlineKeyboard([
               [
                 Markup.button.url(
-                  'Напиши мне +, чтобы получить гайд',
+                  'Напиши мне, чтобы получить гайд',
                   'https://t.me/k_nazarovaaa',
                 ),
               ],
@@ -217,7 +217,7 @@ export class BotService {
               ],
               [
                 Markup.button.url(
-                  'Напиши мне +, чтобы получить гайд',
+                  'Напиши мне, чтобы получить гайд',
                   'https://t.me/k_nazarovaaa',
                 ),
               ],
@@ -295,7 +295,7 @@ export class BotService {
       Markup.inlineKeyboard([
         [
           Markup.button.url(
-            'Напиши мне +, чтобы получить гайд',
+            'Напиши мне, чтобы получить гайд',
             'https://t.me/k_nazarovaaa',
           ),
         ],
